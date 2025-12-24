@@ -295,7 +295,7 @@ function editarPedidoPorNumero(numero) {
   <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-1">
     <span>Rota</span>
     <span className="text-center">Pedidos</span>
-    <span className="text-right  mr-10">Volume</span>
+    <span className="text-right  mr-2">Volume</span>
   </div>
 
   {/* Corpo da tabela */}
@@ -315,7 +315,7 @@ function editarPedidoPorNumero(numero) {
             key={rota}
             onClick={() => setRotaSelecionada({ destino, rota })}
             className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
-            style={{ gridTemplateColumns: "140px 60px 100px" }}
+            style={{ gridTemplateColumns: "140px 60px 130px" }}
           >
             <span className="truncate text-left text-blue-400">{rota}</span>
             <span className="text-center text-white ">{d.qtd}</span> {/* pedidos */}
