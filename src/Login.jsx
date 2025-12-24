@@ -52,7 +52,7 @@ export default function Login({ onLogin }) {
           placeholder="Usuário"
           value={login.usuario}
           onChange={(e) => setLogin({ ...login, usuario: e.target.value })}
-          className="w-full p-3 border rounded mb-3"
+          className="w-full p-3 border-2 rounded mb-5 text-black"
         />
 
         <input
@@ -60,12 +60,12 @@ export default function Login({ onLogin }) {
           placeholder="Senha"
           value={login.senha}
           onChange={(e) => setLogin({ ...login, senha: e.target.value })}
-          className="w-full p-3 border-2 rounded mb-5 text-white"
+          className="   w-full p-3 border-2 rounded mb-5 text-black"
         />
 
         <button
           onClick={entrar}
-          className="w-full  text-white p-3 rounded font-bold"
+          className="w-full  text-black text-2xl p-3 rounded font-bold"
         >
           {primeiraVez ? 'Criar Acesso' : 'Entrar'}
         </button>

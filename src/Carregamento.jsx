@@ -230,7 +230,7 @@ function editarPedidoPorNumero(numero) {
           </div>
 
                    {/* TOTAL POR CIDADE */}
-         <div className="bg-neutral-900 p-4 rounded-xl shadow">
+ <div className="bg-neutral-900 p-4 rounded-xl shadow">
   <h2 className="font-bold mb-3 text-yellow-500">Total por Cidade</h2>
 
   {/* Cabeçalho da tabela */}
@@ -240,8 +240,8 @@ function editarPedidoPorNumero(numero) {
     <span className="text-right">Volume</span>
   </div>
 
-  {/* Linhas */}
-  <div className="space-y-1">
+  {/* Linhas com scroll */}
+  <div className="space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-hide">
     {Object.entries(resumoPorDestino()).map(([destino, rotas]) => {
       const totalCidade = Object.values(rotas).reduce(
         (s, r) => s + r.vol,
@@ -269,6 +269,7 @@ function editarPedidoPorNumero(numero) {
 </div>
 
 
+
    <div className="bg-neutral-900 p-4 rounded-xl shadow">
   {/* Título + setinhas */}
   <div className="flex items-center justify-between mb-2">
@@ -294,7 +295,7 @@ function editarPedidoPorNumero(numero) {
   <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-1">
     <span>Rota</span>
     <span className="text-center">Pedidos</span>
-    <span className="text-right">Volume</span>
+    <span className="text-right  mr-10">Volume</span>
   </div>
 
   {/* Corpo da tabela */}
@@ -313,11 +314,12 @@ function editarPedidoPorNumero(numero) {
           <button
             key={rota}
             onClick={() => setRotaSelecionada({ destino, rota })}
-            className="grid grid-cols-3 items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
+            className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
+            style={{ gridTemplateColumns: "140px 60px 100px" }}
           >
-            <span className="truncate text-blue-400">{rota}</span>
-            <span className="text-center text-white">{d.qtd}</span>
-            <span className="text-right text-white">
+            <span className="truncate text-left text-blue-400">{rota}</span>
+            <span className="text-center text-white ">{d.qtd}</span> {/* pedidos */}
+            <span className="text-right text-white ">
               {d.vol.toFixed(2).replace(".", ",")}
             </span>
           </button>
@@ -331,10 +333,11 @@ function editarPedidoPorNumero(numero) {
 
 
           {rotaSelecionada && (
-            <div className="bg-neutral-800 p-4 rounded-xl shadow">
+            <div className="bg-neutral-800 p-4 rounded-xl shadow ">
               <h2 className="font-bold mb-2 text-yellow-500">
                 Pedidos de {rotaSelecionada.destino} / {rotaSelecionada.rota}
               </h2>
+              <div className="max-h-30 overflow-y-auto no-scrollbar space-y-2 mb-4">
               {pedidos
                 .filter(
                   (p) =>
@@ -371,6 +374,7 @@ function editarPedidoPorNumero(numero) {
                     </div>
                   </div>
                 ))}
+                </div>
             </div>
           )}
 
