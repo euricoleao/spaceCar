@@ -1,73 +1,60 @@
-import { useState } from 'react';
-import bgLogin from './assets/bg-login.jpg';
+import { useState } from "react";
 
 export default function Login({ onLogin }) {
-  const [credenciais] = useState(() => {
-    try {
-      const salvas = localStorage.getItem('liontechcar_login');
-      return salvas ? JSON.parse(salvas) : { usuario: '', senha: '' };
-    } catch {
-      return { usuario: '', senha: '' };
-    }
-  });
+  const [usuario, setUsuario] = useState("");
+  const [senha, setSenha] = useState("");
+  const [erro, setErro] = useState("");
 
-  const [login, setLogin] = useState({
-    usuario: credenciais.usuario || '',
-    senha: '',
-  });
-
-  const primeiraVez = !credenciais.usuario;
-
-  function entrar() {
-    if (primeiraVez) {
-      if (!login.usuario || !login.senha) {
-        alert('Preencha usuário e senha');
-        return;
-      }
-      localStorage.setItem('liontechcar_login', JSON.stringify(login));
-      onLogin();
-    } else {
-      if (
-        login.usuario === credenciais.usuario &&
-        login.senha === credenciais.senha
-      ) {
-        onLogin();
-      } else {
-        alert('Usuário ou senha inválidos');
-      }
-    }
+ function entrar() {
+  if (usuario === "admin" && senha === "1234") {
+    localStorage.setItem("liontechcar_logado", "true");
+    localStorage.setItem("liontechcar_role", "admin");
+    onLogin("admin");
+    return;
   }
 
+  if (usuario === "user" && senha === "1234") {
+    localStorage.setItem("liontechcar_logado", "true");
+    localStorage.setItem("liontechcar_role", "user");
+    onLogin("user");
+    return;
+  }
+
+  setErro("Usuário ou senha inválidos");
+}
+
+
   return (
-    <div
-      className="min-h-screen flex items-center justify-center bg-cover bg-center"
-      style={{ backgroundImage: `url(${bgLogin})` }}
-    >
-      <div className="bg-white/20 p-6 rounded-xl shadow-lg w-full max-w-sm">
-        <h1 className="text-xl font-bold text-center text-yellow-500">
+    <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+      <div className="bg-black/60 p-6 rounded-xl w-full max-w-sm">
+        <h1 className="text-2xl text-yellow-500 font-bold mb-4 text-center">
           LionTechCar
         </h1>
 
         <input
           placeholder="Usuário"
-          value={login.usuario}
-          onChange={(e) => setLogin({ ...login, usuario: e.target.value })}
-          className="w-full p-3 border-2 rounded mb-5 text-black"
+          value={usuario}
+          onChange={(e) => setUsuario(e.target.value)}
+          className="w-full p-3 mb-3 rounded bg-neutral-800 text-white"
         />
 
         <input
           type="password"
           placeholder="Senha"
-          value={login.senha}
-          onChange={(e) => setLogin({ ...login, senha: e.target.value })}
-          className="   w-full p-3 border-2 rounded mb-5 text-black"
+          value={senha}
+          onChange={(e) => setSenha(e.target.value)}
+          className="w-full p-3 mb-3 rounded bg-neutral-800 text-white"
         />
+
+        {erro && (
+          <p className="text-red-400 text-sm mb-2">{erro}</p>
+        )}
 
         <button
           onClick={entrar}
-          className="w-full  text-black text-2xl p-3 rounded font-bold"
+          className="w-full bg-yellow-500 text-black font-bold p-3 rounded"
         >
-          {primeiraVez ? 'Criar Acesso' : 'Entrar'}
+          Entrar
         </button>
       </div>
     </div>

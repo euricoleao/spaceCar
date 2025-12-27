@@ -2,12 +2,25 @@ import { useState } from 'react';
 import { useRef } from "react";
 
 
-const STORAGE_KEY = 'liontechcar_pedidos';
 
-export default function Carregamento({ onLogout }) {
+
+
+// Chaves de armazenamento local
+const STORAGE_KEY = 'liontechcar_pedidos';
+const STORAGE_ENVIADOS_KEY = "liontechcar_pedidos_enviados";
+
+
+
+
+
+export default function Carregamento({ onLogout, role = "user" }) {
+  const isAdmin = role === "admin";
+
   const [aba, setAba] = useState('cadastro');
   const [rotaSelecionada, setRotaSelecionada] = useState(null);
   const listaRotasRef = useRef(null);
+  const [dataLimpeza, setDataLimpeza] = useState("");
+
 
 
   const [pedidos, setPedidos] = useState(() => {
@@ -18,6 +31,26 @@ export default function Carregamento({ onLogout }) {
       return [];
     }
   });
+
+  //   try {
+  //     const raw = localStorage.getItem(STORAGE_DELETADOS_KEY);
+  //     return raw ? JSON.parse(raw) : [];
+  //   } catch {
+  //     return [];
+  //   }
+  // });
+
+
+  const [pedidosEnviados, setPedidosEnviados] = useState(() => {
+    try {
+      const raw = localStorage.getItem(STORAGE_ENVIADOS_KEY);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  });
+
+
 
   const [editIndex, setEditIndex] = useState(null);
 
@@ -61,39 +94,109 @@ export default function Carregamento({ onLogout }) {
   }
 
 
-    function scrollCima() {
-  listaRotasRef.current?.scrollBy({ top: -80, behavior: "smooth" });
-}
+  function scrollCima() {
+    listaRotasRef.current?.scrollBy({ top: -80, behavior: "smooth" });
+  }
 
-function scrollBaixo() {
-  listaRotasRef.current?.scrollBy({ top: 80, behavior: "smooth" });
-}
+  function scrollBaixo() {
+    listaRotasRef.current?.scrollBy({ top: 80, behavior: "smooth" });
+  }
 
-function editarPedidoPorNumero(numero) {
-  const p = pedidos.find(p => p.numero === numero);
-  if (!p) return;
+  function editarPedidoPorNumero(numero) {
+    const p = pedidos.find(p => p.numero === numero);
+    if (!p) return;
 
-  setForm({
-    destino: p.destino,
-    rota: p.rota,
-    numero: p.numero,
-    nome: p.nome,
-    volume: p.volume.toString().replace(".", ","),
-  });
+    setForm({
+      destino: p.destino,
+      rota: p.rota,
+      numero: p.numero,
+      nome: p.nome,
+      volume: p.volume.toString().replace(".", ","),
+    });
 
-  const indexReal = pedidos.findIndex(p => p.numero === numero);
-  setEditIndex(indexReal);
-  setAba("cadastro");
-}
+    const indexReal = pedidos.findIndex(p => p.numero === numero);
+    setEditIndex(indexReal);
+    setAba("cadastro");
+  }
+
+  function enviarPedido(numeroPedido) {
+    const pedido = pedidos.find(p => p.numero === numeroPedido);
+    if (!pedido) return;
+
+    // remove da lista ativa
+    const novaLista = pedidos.filter(p => p.numero !== numeroPedido);
+    setPedidos(novaLista);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(novaLista));
+
+    // garante todos os campos importantes
+    const pedidoEnviado = {
+      numero: pedido.numero,
+      nome: pedido.nome,
+      destino: pedido.destino || "—",
+      rota: pedido.rota || "",
+      volume: Number(pedido.volume) || 0,
+      enviadoEm: new Date().toISOString(),
+    };
+
+    const enviadosAtualizados = [
+      pedidoEnviado,
+      ...pedidosEnviados,
+    ];
+
+    setPedidosEnviados(enviadosAtualizados);
+    localStorage.setItem(
+      STORAGE_ENVIADOS_KEY,
+      JSON.stringify(enviadosAtualizados)
+    );
+  }
 
 
-  function excluirPedidoPorNumero(numero) {
-  if (!confirm("Deseja excluir este pedido?")) return;
 
-  const lista = pedidos.filter(p => p.numero !== numero);
-  setPedidos(lista);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
-}
+  function excluirDefinitivo(numeroPedido) {
+    if (!confirm("Excluir este pedido permanentemente?")) return;
+
+    const novaLista = pedidosEnviados.filter(
+      p => p.numero !== numeroPedido
+    );
+
+    setPedidosEnviados(novaLista);
+    localStorage.setItem(
+      STORAGE_ENVIADOS_KEY,
+      JSON.stringify(novaLista)
+    );
+  }
+
+  function limparRelatoriosPorData(dataLimite) {
+    if (!dataLimite) {
+      alert("Selecione uma data");
+      return;
+    }
+
+
+
+
+    const limite = new Date(dataLimite);
+
+    const filtrados = pedidosEnviados.filter(p => {
+      if (!p.enviadoEm) return false;
+      return new Date(p.enviadoEm) >= limite;
+    });
+
+    const removidos = pedidosEnviados.length - filtrados.length;
+
+    if (removidos === 0) {
+      alert("Nenhum relatório para remover nessa data");
+      return;
+    }
+
+    if (!confirm(`Deseja remover ${removidos} pedido(s) antigos?`)) return;
+
+    setPedidosEnviados(filtrados);
+    localStorage.setItem(
+      STORAGE_ENVIADOS_KEY,
+      JSON.stringify(filtrados)
+    );
+  }
 
 
   function resumoPorDestino() {
@@ -132,44 +235,94 @@ function editarPedidoPorNumero(numero) {
 
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
 
-  
 
+
+  }
+
+  function limparTodosRelatorios() {
+    if (!Array.isArray(pedidosEnviados) || pedidosEnviados.length === 0) {
+      alert("Não há relatórios para apagar");
+      return;
+    }
+
+    const confirmar = window.confirm(
+      "⚠️ Tem certeza que deseja apagar TODOS os relatórios enviados?"
+    );
+    if (!confirmar) return;
+
+    const confirmar2 = window.confirm(
+      "❗ Esta ação NÃO poderá ser desfeita. Confirmar novamente?"
+    );
+    if (!confirmar2) return;
+
+    setPedidosEnviados([]);
+    localStorage.removeItem(STORAGE_ENVIADOS_KEY);
   }
 
   return (
     <div className="min-h-screen w-full max-w-full bg-neutral-950 p-3 overflow-y-auto">
-     <header className="fixed top-1 mb left-0 right-0 z-50 bg-neutral-900 text-yellow-500 p-4 text-center">
-  <button
-    onClick={onLogout}
-    className="absolute right-3 top-3 w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded text-xs"
-  >
-    Sair
-  </button>
-
-  <h1 className="text-3xl font-bold">LionTechCar</h1>
-  <p className="text-xs opacity-90 text-white">
-    Controle de Carregamento
-  </p>
-</header>
-      <div className="h-20 mt-3"></div>  
-      <div className="flex mb-4 bg-neutral-800 rounded-2xl text-white text-sm shadow gap-1 ">
+      {/* ESTA É A HEADER */}
+      <header className="fixed top-1 mb left-0 right-0 z-50 bg-neutral-900 text-yellow-500 p-4 text-center">
         <button
-          onClick={() => setAba('cadastro')}
-          className={`flex-1 p-3 ${
-            aba === 'cadastro' ? 'bg-neutral-900 rounded-2xl border-1 text-yellow-500' : ''
-          }`}
+          onClick={onLogout}
+          className="absolute right-3 top-3 w-8 h-8 flex items-center justify-center bg-red-500 text-white rounded text-xs"
+        >
+          Sair
+        </button>
+        <p className="text-white text-xs">
+        Perfil: {isAdmin ? "Admin" : "Usuário"}
+      </p>
+
+        <h1 className="text-3xl font-bold">LionTechCar</h1>
+        <p className="text-xs opacity-90 text-white">
+          Controle de Carregamento
+        </p>
+      </header>
+      {/* FIM DA HEADER */}
+
+      <div className="h-20 mt-3"></div>
+      
+
+
+      <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
+
+        {/* Botão de Cadastro */}
+        <button
+          onClick={() => setAba("cadastro")}
+          className={`flex-1 p-3 ${aba === "cadastro" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+            }`}
         >
           Cadastro
         </button>
+
+        {/* Botão de Resumo */}
         <button
-          onClick={() => setAba('resumo')}
-          className={`flex-1 p-3 ${
-            aba === 'resumo' ? 'bg-neutral-900 rounded-2xl border-1 text-yellow-500' : ''
-          }`}
+          onClick={() => setAba("resumo")}
+          className={`flex-1 p-3 ${aba === "resumo" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+            }`}
         >
-          Resumo
+          Ativos
         </button>
+
+        {/* Botão de Enviados */}
+        <button
+          onClick={() => setAba("enviados")}
+          className={`flex-1 p-3 ${aba === "enviados" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+            }`}
+        >
+          Enviados
+        </button>
+
+        {/* Botão de Relatório */}
+        <button
+          onClick={() => setAba("relatorios")}
+          className={`flex-1 p-3 ${aba === "relatorios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""}`}
+        >
+          Relatórios
+        </button>
+
       </div>
+
 
       {aba === 'cadastro' && (
         <div className="bg-neutral-900 rounded-xl p-4 shadow space-y-3 text-gray-400">
@@ -229,105 +382,105 @@ function editarPedidoPorNumero(numero) {
             </p>
           </div>
 
-                   {/* TOTAL POR CIDADE */}
- <div className="bg-neutral-900 p-4 rounded-xl shadow">
-  <h2 className="font-bold mb-3 text-yellow-500">Total por Cidade</h2>
+          {/* TOTAL POR CIDADE */}
+          <div className="bg-neutral-900 p-4 rounded-xl shadow">
+            <h2 className="font-bold mb-3 text-yellow-500">Total por Cidade</h2>
 
-  {/* Cabeçalho da tabela */}
-  <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-2">
-    <span>Cidade</span>
-    <span className="text-center">Pedidos</span>
-    <span className="text-right">Volume</span>
-  </div>
+            {/* Cabeçalho da tabela */}
+            <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-2">
+              <span>Cidade</span>
+              <span className="text-center">Pedidos</span>
+              <span className="text-right">Volume</span>
+            </div>
 
-  {/* Linhas com scroll */}
-  <div className="space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-hide">
-    {Object.entries(resumoPorDestino()).map(([destino, rotas]) => {
-      const totalCidade = Object.values(rotas).reduce(
-        (s, r) => s + r.vol,
-        0
-      );
-      const qtdCidade = Object.values(rotas).reduce(
-        (s, r) => s + r.qtd,
-        0
-      );
+            {/* Linhas com scroll */}
+            <div className="space-y-1 max-h-40 overflow-y-auto pr-1 scrollbar-hide">
+              {Object.entries(resumoPorDestino()).map(([destino, rotas]) => {
+                const totalCidade = Object.values(rotas).reduce(
+                  (s, r) => s + r.vol,
+                  0
+                );
+                const qtdCidade = Object.values(rotas).reduce(
+                  (s, r) => s + r.qtd,
+                  0
+                );
 
-      return (
-        <div
-          key={destino}
-          className="grid grid-cols-3 items-center bg-neutral-800 rounded px-2 py-1 text-sm"
-        >
-          <span className="text-white truncate">{destino}</span>
-          <span className="text-center text-white">{qtdCidade}</span>
-          <span className="text-right text-white">
-            {totalCidade.toFixed(2).replace(".", ",")}
-          </span>
-        </div>
-      );
-    })}
-  </div>
-</div>
+                return (
+                  <div
+                    key={destino}
+                    className="grid grid-cols-3 items-center bg-neutral-800 rounded px-2 py-1 text-sm"
+                  >
+                    <span className="text-white truncate">{destino}</span>
+                    <span className="text-center text-white">{qtdCidade}</span>
+                    <span className="text-right text-white">
+                      {totalCidade.toFixed(2).replace(".", ",")}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
 
 
 
-   <div className="bg-neutral-900 p-4 rounded-xl shadow">
-  {/* Título + setinhas */}
-  <div className="flex items-center justify-between mb-2">
-    <h2 className="font-bold text-yellow-500">Total por Rotas</h2>
+          <div className="bg-neutral-900 p-4 rounded-xl shadow">
+            {/* Título + setinhas */}
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="font-bold text-yellow-500">Total por Rotas</h2>
 
-    <div className="flex gap-2">
-      <button
-        onClick={scrollCima}
-        className="w-7 h-7 flex items-center justify-center bg-neutral-800 text-white rounded"
-      >
-        ↑
-      </button>
-      <button
-        onClick={scrollBaixo}
-        className="w-7 h-7 flex items-center justify-center bg-neutral-800 text-white rounded"
-      >
-        ↓
-      </button>
-    </div>
-  </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={scrollCima}
+                  className="w-7 h-7 flex items-center justify-center bg-neutral-800 text-white rounded"
+                >
+                  ↑
+                </button>
+                <button
+                  onClick={scrollBaixo}
+                  className="w-7 h-7 flex items-center justify-center bg-neutral-800 text-white rounded"
+                >
+                  ↓
+                </button>
+              </div>
+            </div>
 
-  {/* Cabeçalho da tabela */}
-  <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-1">
-    <span>Rota</span>
-    <span className="text-center">Pedidos</span>
-    <span className="text-right  mr-2">Volume</span>
-  </div>
+            {/* Cabeçalho da tabela */}
+            <div className="grid grid-cols-3 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1 mb-1">
+              <span>Rota</span>
+              <span className="text-center">Pedidos</span>
+              <span className="text-right  mr-2">Volume</span>
+            </div>
 
-  {/* Corpo da tabela */}
-  <div
-    ref={listaRotasRef}
-    className="max-h-48 overflow-y-auto no-scrollbar space-y-1 pr-1"
-  >
-    {Object.entries(resumoPorDestino()).map(([destino, rotas]) => (
-      <div key={destino}>
-        {/* Nome da cidade */}
-        <div className="text-yellow-400 text-xs font-semibold mt-2">
-          {destino}
-        </div>
+            {/* Corpo da tabela */}
+            <div
+              ref={listaRotasRef}
+              className="max-h-48 overflow-y-auto no-scrollbar space-y-1 pr-1"
+            >
+              {Object.entries(resumoPorDestino()).map(([destino, rotas]) => (
+                <div key={destino}>
+                  {/* Nome da cidade */}
+                  <div className="text-yellow-400 text-xs font-semibold mt-2">
+                    {destino}
+                  </div>
 
-        {Object.entries(rotas).map(([rota, d]) => (
-          <button
-            key={rota}
-            onClick={() => setRotaSelecionada({ destino, rota })}
-            className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
-            style={{ gridTemplateColumns: "140px 60px 130px" }}
-          >
-            <span className="truncate text-left text-blue-400">{rota}</span>
-            <span className="text-center text-white ">{d.qtd}</span> {/* pedidos */}
-            <span className="text-right text-white ">
-              {d.vol.toFixed(2).replace(".", ",")}
-            </span>
-          </button>
-        ))}
-      </div>
-    ))}
-  </div>
-</div>
+                  {Object.entries(rotas).map(([rota, d]) => (
+                    <button
+                      key={rota}
+                      onClick={() => setRotaSelecionada({ destino, rota })}
+                      className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
+                      style={{ gridTemplateColumns: "140px 60px 130px" }}
+                    >
+                      <span className="truncate text-left text-blue-400">{rota}</span>
+                      <span className="text-center text-white ">{d.qtd}</span> {/* pedidos */}
+                      <span className="text-right text-white ">
+                        {d.vol.toFixed(2).replace(".", ",")}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
 
 
 
@@ -338,43 +491,43 @@ function editarPedidoPorNumero(numero) {
                 Pedidos de {rotaSelecionada.destino} / {rotaSelecionada.rota}
               </h2>
               <div className="max-h-30 overflow-y-auto no-scrollbar space-y-2 mb-4">
-              {pedidos
-                .filter(
-                  (p) =>
-                    p.destino.trim().toUpperCase() ===
+                {pedidos
+                  .filter(
+                    (p) =>
+                      p.destino.trim().toUpperCase() ===
                       rotaSelecionada.destino &&
-                    p.rota.trim().toUpperCase() === rotaSelecionada.rota
-                )
-                .map((p, i) => (
-                  <div
-                    key={i}
-                    className="flex items-center justify-between text-sm border-b py-1"
-                  >
-                    <span className='text-white'>
-                      {p.numero} - <span className='text-blue-700'>{p.nome}{' '}</span>
-                      <span className="text-xs text-gray-500 ml-2">
-                        vol: {p.volume.toFixed(2).replace('.', ',')}
+                      p.rota.trim().toUpperCase() === rotaSelecionada.rota
+                  )
+                  .map((p, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between text-sm border-b py-1"
+                    >
+                      <span className='text-white'>
+                        {p.numero} - <span className='text-blue-700'>{p.nome}{' '}</span>
+                        <span className="text-xs text-gray-500 ml-2">
+                          vol: {p.volume.toFixed(2).replace('.', ',')}
+                        </span>
                       </span>
-                    </span>
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() =>  editarPedidoPorNumero(p.numero)}
-                        className="flex items-center justify-center text-red-600 text-lg w-8 h-8 ml-2"
-                        title="Editar"
-                      >
-                        ✏️
-                      </button>
-                      <button
-                        onClick={() => excluirPedidoPorNumero(p.numero)}
-                        className="flex items-center justify-center text-red-600 text-lg w-8 h-8"
-                        title="Excluir"
-                      >
-                        🗑️
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => editarPedidoPorNumero(p.numero)}
+                          className="flex items-center justify-center text-red-600 text-lg w-8 h-8 ml-2"
+                          title="Editar"
+                        >
+                          ✏️
+                        </button>
+                        <button
+                          onClick={() => enviarPedido(p.numero)}
+                          className="text-green-500"
+                        >
+                          ✔
+                        </button>
+
+                      </div>
                     </div>
-                  </div>
-                ))}
-                </div>
+                  ))}
+              </div>
             </div>
           )}
 
@@ -382,10 +535,151 @@ function editarPedidoPorNumero(numero) {
             onClick={enviarWhatsApp}
             className="w-full bg-neutral-800 text-white p-3 rounded-xl font-bold"
           >
-            Enviar Resumo no <span className='text-green-400'>WhatsApp</span> 
+            Enviar Resumo no <span className='text-green-400'>WhatsApp</span>
           </button>
         </div>
       )}
+
+      {aba === "enviados" && (
+        <div className="bg-neutral-900 p-4 rounded-xl shadow space-y-2">
+          <h2 className="font-bold text-yellow-500 mb-3">
+            Pedidos Enviados
+          </h2>
+
+          {pedidosEnviados.length === 0 && (
+            <p className="text-gray-400 text-sm">
+              Nenhum pedido enviado ainda.
+            </p>
+          )}
+
+          {/* Cabeçalho */}
+          {pedidosEnviados.length > 0 && (
+            <div className="grid grid-cols-5 text-xs font-semibold text-gray-400 border-b border-neutral-700 pb-1">
+              <span>Pedido</span>
+              <span>Cidade</span>
+              <span className="text-center">Volume</span>
+              <span className="text-center">Data</span>
+              <span className="text-right">Ação</span>
+            </div>
+          )}
+
+          {/* Linhas */}
+          {pedidosEnviados.map((p, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-5 items-center bg-neutral-800 rounded px-2 py-2 text-sm text-white"
+            >
+              <span className="truncate">
+                {p.numero} - {p.nome}
+              </span>
+
+              <span className="truncate text-center">
+                {p.destino}
+              </span>
+
+              <span className="text-center">
+                {Number(p.volume || 0).toFixed(2).replace(".", ",")}
+              </span>
+
+              <span className="text-center text-xs text-gray-300">
+                {p.enviadoEm
+                  ? new Date(p.enviadoEm).toLocaleDateString("pt-BR")
+                  : "--"}
+              </span>
+
+              {/* Lixeira definitiva */}
+              <button
+                onClick={() => excluirDefinitivo(p.numero)}
+                className="text-red-500 text-right"
+                title="Excluir definitivamente"
+              >
+                🗑️
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+
+      {aba === "relatorios" && (
+
+        <div className="bg-neutral-900 p-4 rounded-xl shadow space-y-2">
+
+          <div className="flex items-center gap-2 mb-4">
+            <input
+              type="date"
+              onChange={(e) => setDataLimpeza(e.target.value)}
+              className="bg-neutral-800 text-white text-sm px-2 py-1 rounded"
+            />
+
+            <button
+              onClick={() => limparRelatoriosPorData(dataLimpeza)}
+              className="bg-orange-600  text-white px-3 py-1 rounded text-sm w-[100px]"
+            >
+              Limpar por data
+            </button>
+
+            <button
+              onClick={limparTodosRelatorios}
+              className="bg-red-700  text-white px-3 py-1 rounded text-sm"
+            >
+              Limpar tudo
+            </button>
+
+          </div>
+
+
+
+          <h2 className="font-bold text-yellow-500 mb-3">
+            Relatório de Pedidos Enviados
+          </h2>
+
+          {/* Cabeçalho */}
+          <div className="grid grid-cols-4 text-xs font-semibold text-gray-300 border-b border-neutral-700 pb-1">
+            <span>Pedido</span>
+            <span className="text-center">Cidade</span>
+            <span className="text-center">Volume</span>
+            <span className="text-right">Data</span>
+          </div>
+
+          {pedidosEnviados.length === 0 && (
+            <p className="text-gray-400 text-sm mt-2">
+              Nenhum pedido enviado.
+            </p>
+          )}
+
+          {/* Linhas */}
+          <div className="space-y-1 max-h-64 overflow-y-auto scrollbar-hide">
+            {pedidosEnviados.map((p, i) => (
+              <div
+                key={i}
+                className="grid grid-cols-4 items-center bg-neutral-800 rounded px-2 py-1 text-sm"
+              >
+                <span className="text-white truncate">
+                  {p.numero} - {p.nome}
+                </span>
+
+                <span className="text-center text-white">
+                  {p.destino || "—"}
+                </span>
+
+                <span className="text-center text-white">
+                  {Number(p.volume || 0).toFixed(2).replace(".", ",")}
+                </span>
+
+                <span className="text-right text-white text-xs">
+                  {p.enviadoEm
+                    ? new Date(p.enviadoEm).toLocaleDateString("pt-BR")
+                    : "—"}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 }
+
