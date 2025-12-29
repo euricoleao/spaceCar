@@ -1,27 +1,50 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export default function Login({ onLogin }) {
   const [usuario, setUsuario] = useState("");
   const [senha, setSenha] = useState("");
   const [erro, setErro] = useState("");
 
- function entrar() {
-  if (usuario === "admin" && senha === "1234") {
-    localStorage.setItem("liontechcar_logado", "true");
-    localStorage.setItem("liontechcar_role", "admin");
-    onLogin("admin");
+  function fazerLogin() {
+  const usuarios =
+    JSON.parse(localStorage.getItem("liontechcar_usuarios")) || [];
+
+  const encontrado = usuarios.find(
+    (u) =>
+      u.usuario === usuario.trim() &&
+      u.senha === senha.trim()
+  );
+
+  if (!encontrado) {
+    setErro("Usuário ou senha inválidos");
     return;
   }
 
-  if (usuario === "user" && senha === "1234") {
-    localStorage.setItem("liontechcar_logado", "true");
-    localStorage.setItem("liontechcar_role", "user");
-    onLogin("user");
-    return;
-  }
+  // salva sessão
+  localStorage.setItem("liontechcar_logado", "true");
+  localStorage.setItem("liontechcar_user", encontrado.usuario);
+  localStorage.setItem("liontechcar_role", encontrado.role);
 
-  setErro("Usuário ou senha inválidos");
+  onLogin(encontrado.role);
 }
+
+
+  // cria admin padrão se não existir
+ useEffect(() => {
+  const usuarios = JSON.parse(
+    localStorage.getItem("liontechcar_usuarios")
+  );
+
+  if (!usuarios) {
+    localStorage.setItem(
+      "liontechcar_usuarios",
+      JSON.stringify([
+        { usuario: "admin", senha: "1234", role: "admin" }
+      ])
+    );
+  }
+}, []);
+
 
 
   return (
@@ -51,7 +74,7 @@ export default function Login({ onLogin }) {
         )}
 
         <button
-          onClick={entrar}
+          onClick={fazerLogin}
           className="w-full bg-yellow-500 text-black font-bold p-3 rounded"
         >
           Entrar

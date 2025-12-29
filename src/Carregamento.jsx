@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import {  useState } from 'react';
 import { useRef } from "react";
 
 
@@ -8,18 +8,48 @@ import { useRef } from "react";
 // Chaves de armazenamento local
 const STORAGE_KEY = 'liontechcar_pedidos';
 const STORAGE_ENVIADOS_KEY = "liontechcar_pedidos_enviados";
-
-
+const STORAGE_PRODUTOS_KEY = "liontechcar_produtos";
+const usuarioLogado = localStorage.getItem("liontechcar_user") || "Usuário";
 
 
 
 export default function Carregamento({ onLogout, role = "user" }) {
   const isAdmin = role === "admin";
 
+
+  const [produtos, setProdutos] = useState(() =>
+    JSON.parse(localStorage.getItem("liontechcar_produtos")) || []
+  );
+
+  
+
+  const [usuarios, setUsuarios] = useState(
+    JSON.parse(localStorage.getItem("liontechcar_usuarios")) || []
+  );
+
+  const [novoUsuario, setNovoUsuario] = useState({
+    usuario: "",
+    senha: "",
+    role: "user"
+  });
+
   const [aba, setAba] = useState('cadastro');
   const [rotaSelecionada, setRotaSelecionada] = useState(null);
   const listaRotasRef = useRef(null);
   const [dataLimpeza, setDataLimpeza] = useState("");
+
+
+  const [codigoProduto, setCodigoProduto] = useState("");
+  const [itensPedido, setItensPedido] = useState([]);
+  const [produtoEncontrado, setProdutoEncontrado] = useState(null);
+  const [quantidadeProduto, setQuantidadeProduto] = useState("");
+
+  // Cadastro de produto
+  const [codigo, setCodigo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [comprimento, setComprimento] = useState("");
+  const [largura, setLargura] = useState("");
+  const [altura, setAltura] = useState("");
 
 
 
@@ -32,13 +62,6 @@ export default function Carregamento({ onLogout, role = "user" }) {
     }
   });
 
-  //   try {
-  //     const raw = localStorage.getItem(STORAGE_DELETADOS_KEY);
-  //     return raw ? JSON.parse(raw) : [];
-  //   } catch {
-  //     return [];
-  //   }
-  // });
 
 
   const [pedidosEnviados, setPedidosEnviados] = useState(() => {
@@ -62,6 +85,64 @@ export default function Carregamento({ onLogout, role = "user" }) {
     volume: '',
   });
 
+  function criarUsuario() {
+    if (!novoUsuario.usuario || !novoUsuario.senha) {
+      alert("Preencha usuário e senha");
+      return;
+    }
+
+    if (usuarios.some(u => u.usuario === novoUsuario.usuario)) {
+      alert("Usuário já existe");
+      return;
+    }
+
+    const lista = [...usuarios, novoUsuario];
+    setUsuarios(lista);
+
+    localStorage.setItem(
+      "liontechcar_usuarios",
+      JSON.stringify(lista)
+    );
+
+    setNovoUsuario({ usuario: "", senha: "", role: "user" });
+  }
+
+  // BUSCAR PRODUTO POR CÓDIGO
+ function salvarProduto() {
+  if (!codigo || !descricao || !comprimento || !largura || !altura) {
+    alert("Preencha todos os campos");
+    return;
+  }
+
+  const volume =
+    Number(comprimento) * Number(largura) * Number(altura);
+
+  const novoProduto = {
+    codigo: codigo.trim(),
+    descricao: descricao.trim(),
+    comprimento: Number(comprimento),
+    largura: Number(largura),
+    altura: Number(altura),
+    volume
+  };
+
+  const listaAtualizada = [...produtos, novoProduto];
+
+  setProdutos(listaAtualizada);
+  localStorage.setItem(
+    "liontechcar_produtos",
+    JSON.stringify(listaAtualizada)
+  );
+
+  // limpa formulário
+  setCodigo("");
+  setDescricao("");
+  setComprimento("");
+  setLargura("");
+  setAltura("");
+}
+
+
   function salvarPedido() {
     if (
       !form.destino ||
@@ -74,9 +155,19 @@ export default function Carregamento({ onLogout, role = "user" }) {
       return;
     }
 
+   const volumeFinal =
+  itensPedido.length > 0
+    ? itensPedido.reduce(
+        (soma, item) => soma + item.volumeTotal,
+        0
+      )
+    : parseFloat(form.volume.replace(",", "."));
+
+
+
     const novo = {
       ...form,
-      volume: parseFloat(form.volume.replace(',', '.')),
+      volume: volumeFinal,
     };
 
     const lista = [...pedidos];
@@ -150,6 +241,46 @@ export default function Carregamento({ onLogout, role = "user" }) {
     );
   }
 
+  function buscarProdutoPorCodigo(codigo) {
+    const produto = produtos.find(p => p.codigo === codigo);
+
+    if (!produto) {
+      setProdutoEncontrado(null);
+      return;
+    }
+
+    setProdutoEncontrado(produto);
+
+
+  }
+
+  function adicionarItemPedido() {
+    if (!produtoEncontrado || !quantidadeProduto) {
+      alert("Produto ou quantidade inválidos");
+      return;
+    }
+
+    const quantidade = Number(quantidadeProduto);
+
+    const volumeUnitario =
+      produtoEncontrado.comprimento *
+      produtoEncontrado.largura *
+      produtoEncontrado.altura;
+
+    const item = {
+      codigo: produtoEncontrado.codigo,
+      descricao: produtoEncontrado.descricao,
+      quantidade,
+      volumeUnitario,
+      volumeTotal: volumeUnitario * quantidade
+    };
+
+    setItensPedido([...itensPedido, item]);
+
+    setCodigoProduto("");
+    setQuantidadeProduto("");
+    setProdutoEncontrado(null);
+  }
 
 
   function excluirDefinitivo(numeroPedido) {
@@ -259,6 +390,31 @@ export default function Carregamento({ onLogout, role = "user" }) {
     localStorage.removeItem(STORAGE_ENVIADOS_KEY);
   }
 
+  function removerItemPedido(index) {
+  const novaLista = itensPedido.filter((_, i) => i !== index);
+  setItensPedido(novaLista);
+}
+
+function editarQuantidadeItem(index, novaQuantidade) {
+  const lista = [...itensPedido];
+
+  const item = lista[index];
+
+  const volumeTotal =
+    item.volumeUnitario * Number(novaQuantidade);
+
+  lista[index] = {
+    ...item,
+    quantidade: Number(novaQuantidade),
+    volumeTotal
+  };
+
+  setItensPedido(lista);
+}
+
+
+
+
   return (
     <div className="min-h-screen w-full max-w-full bg-neutral-950 p-3 overflow-y-auto">
       {/* ESTA É A HEADER */}
@@ -270,8 +426,9 @@ export default function Carregamento({ onLogout, role = "user" }) {
           Sair
         </button>
         <p className="text-white text-xs">
-        Perfil: {isAdmin ? "Admin" : "Usuário"}
-      </p>
+          Logado como: <span className="font-semibold">{usuarioLogado}</span>
+
+        </p>
 
         <h1 className="text-3xl font-bold">LionTechCar</h1>
         <p className="text-xs opacity-90 text-white">
@@ -281,7 +438,7 @@ export default function Carregamento({ onLogout, role = "user" }) {
       {/* FIM DA HEADER */}
 
       <div className="h-20 mt-3"></div>
-      
+
 
 
       <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
@@ -295,6 +452,8 @@ export default function Carregamento({ onLogout, role = "user" }) {
           Cadastro
         </button>
 
+
+
         {/* Botão de Resumo */}
         <button
           onClick={() => setAba("resumo")}
@@ -303,6 +462,49 @@ export default function Carregamento({ onLogout, role = "user" }) {
         >
           Ativos
         </button>
+
+        {/* Botão de Enviados */}
+        <button
+          onClick={() => setAba("enviados")}
+          className={`flex-1 p-3 ${aba === "enviados" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+            }`}
+        >
+          Enviados
+        </button>
+
+        {/* Botão de Relatório */}
+        <button
+          onClick={() => setAba("relatorios")}
+          className={`flex-1 p-3 ${aba === "relatorios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""}`}
+        >
+          Relatórios
+        </button>
+
+      </div>
+      {/* segunda parte dos botoes */}
+      <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
+
+        {/* Botão de Produtos */}
+
+        <button
+          onClick={() => setAba("produtos")}
+          className={`px-3 py-1 rounded ${aba === "produtos" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+            }`}
+        >
+          Produtos
+        </button>
+
+        {/* Botão de Resumo */}
+        {isAdmin && (
+          <button
+            onClick={() => setAba("usuarios")}
+            className={`flex-1 p-3 ${aba === "usuarios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
+              }`}
+          >
+            Usuários
+          </button>
+        )}
+
 
         {/* Botão de Enviados */}
         <button
@@ -350,21 +552,148 @@ export default function Carregamento({ onLogout, role = "user" }) {
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
             className="w-full p-3 border rounded"
           />
-          <input
+
+          {/* Produto por código */}
+          <div className="bg-neutral-800 p-3 rounded space-y-2">
+            <h3 className="text-yellow-500 text-sm font-bold">
+              Produto
+            </h3>
+
+            <input
+              placeholder="Código do Produto"
+              value={codigoProduto}
+              onChange={e => {
+                setCodigoProduto(e.target.value);
+                buscarProdutoPorCodigo(e.target.value);
+              }}
+              className="w-full p-2 rounded border bg-neutral-900 text-white"
+            />
+
+            <input
+              placeholder="Quantidade"
+              type="number"
+              value={quantidadeProduto}
+              onChange={e => setQuantidadeProduto(e.target.value)}
+              className="w-full p-2 rounded  border bg-neutral-900 text-white"
+            />
+
+            {produtoEncontrado && (
+              <p className="text-green-400 text-sm">
+                Volume unitário:{" "}
+                {(produtoEncontrado.comprimento *
+                  produtoEncontrado.largura *
+                  produtoEncontrado.altura
+                ).toFixed(3)} m³
+              </p>
+            )}
+
+             <input
             placeholder="Volume (0,35)"
             value={form.volume}
             onChange={(e) => setForm({ ...form, volume: e.target.value })}
-            className="w-full p-3 border rounded"
+            className="w-full p-2 rounded  border bg-neutral-900 text-white "
           />
 
+
+          </div>
+
+
+         
           <button
             onClick={salvarPedido}
             className="w-full bg-neutral-800 text-yellow-500 p-3 rounded font-bold"
           >
             {editIndex !== null ? 'Salvar Alteração' : 'Adicionar Pedido'}
           </button>
+
+          <button
+            onClick={adicionarItemPedido}
+            className="w-full bg-blue-600 text-white p-2 rounded mt-2"
+          >
+            ➕ Adicionar produto
+          </button>
+
+          {/* ===== AQUI COMEÇA A LISTA DE ITENS DO PEDIDO ===== */}
+          {itensPedido.length > 0 && (
+  <div className="mt-3 space-y-1">
+    <p className="text-yellow-500 font-semibold text-sm">
+      Itens do pedido
+    </p>
+
+    {itensPedido.map((item, i) => (
+      <div
+        key={i}
+        className="grid grid-cols-5 items-center text-xs bg-neutral-800 text-white rounded px-2 py-1 gap-1"
+      >
+        <span className="truncate col-span-2">
+          {item.descricao}
+        </span>
+
+        {/* quantidade editável */}
+        <input
+          type="number"
+          min="1"
+          value={item.quantidade}
+          onChange={(e) =>
+            editarQuantidadeItem(i, e.target.value)
+          }
+          className="w-14 text-center bg-neutral-900 rounded"
+        />
+
+        <span className="text-right">
+          {item.volumeTotal.toFixed(3)}
+        </span>
+
+        {/* remover */}
+        <button
+          onClick={() => removerItemPedido(i)}
+          className="text-red-500 text-center"
+        >
+          🗑️
+        </button>
+      </div>
+    ))}
+  </div>
+)}
+
+
         </div>
       )}
+
+      {aba === "produtos" && (
+        <div className="bg-neutral-900 p-4 rounded-xl gap-1 space-y-3 shadow">
+          <h2 className="text-yellow-500 font-bold mb-2">
+            Cadastro de Produtos
+          </h2>
+
+          <input placeholder="Código" value={codigo}
+            onChange={e => setCodigo(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white " />
+
+          <input placeholder="Descrição" value={descricao}
+            onChange={e => setDescricao(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+
+          <input placeholder="Comprimento (m)" value={comprimento}
+            onChange={e => setComprimento(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+
+          <input placeholder="Largura (m)" value={largura}
+            onChange={e => setLargura(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+
+          <input placeholder="Altura (m)" value={altura}
+            onChange={e => setAltura(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+
+          <button onClick={salvarProduto}
+            className="w-full bg-yellow-500 text-black font-bold p-2 rounded">
+            Salvar produto
+          </button>
+        </div>
+      )}
+
+
 
       {aba === 'resumo' && (
         <div className="space-y-3 bg-neutral-950">
@@ -675,6 +1004,52 @@ export default function Carregamento({ onLogout, role = "user" }) {
               </div>
             ))}
           </div>
+        </div>
+      )}
+
+
+      {aba === "usuarios" && isAdmin && (
+        <div className="bg-neutral-900 p-4 rounded-xl space-y-3">
+          <h2 className="text-yellow-500 font-bold">
+            Criar Usuário
+          </h2>
+
+          <input
+            placeholder="Usuário"
+            value={novoUsuario.usuario}
+            onChange={e =>
+              setNovoUsuario({ ...novoUsuario, usuario: e.target.value })
+            }
+            className="w-full p-2 rounded bg-neutral-800 text-white"
+          />
+
+          <input
+            placeholder="Senha"
+            type="password"
+            value={novoUsuario.senha}
+            onChange={e =>
+              setNovoUsuario({ ...novoUsuario, senha: e.target.value })
+            }
+            className="w-full p-2 rounded bg-neutral-800 text-white"
+          />
+
+          <select
+            value={novoUsuario.role}
+            onChange={e =>
+              setNovoUsuario({ ...novoUsuario, role: e.target.value })
+            }
+            className="w-full p-2 rounded bg-neutral-800 text-white"
+          >
+            <option value="user">Usuário</option>
+            <option value="admin">Admin</option>
+          </select>
+
+          <button
+            onClick={criarUsuario}
+            className="w-full bg-yellow-500 text-black font-bold p-2 rounded"
+          >
+            Criar Usuário
+          </button>
         </div>
       )}
 
