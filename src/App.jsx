@@ -1,27 +1,25 @@
-import { useState, useEffect } from "react";
-import Login from "./Login";
-import Carregamento from "./Carregamento";
+import { useState, useEffect } from 'react';
+import Login from './Login';
+import Carregamento from './Carregamento';
 
 export default function App() {
   const [logado, setLogado] = useState(false);
   const [role, setRole] = useState(null);
 
   useEffect(() => {
-  const ok = localStorage.getItem("liontechcar_logado");
-  const r = localStorage.getItem("liontechcar_role");
+    const usuarios = JSON.parse(localStorage.getItem('liontechcar_users'));
 
-  if (ok === "true" && r) {
-    setLogado(true);
-    setRole(r);
-  }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  
-}, []);
-
+    if (!usuarios) {
+      localStorage.setItem(
+        'liontechcar_users',
+        JSON.stringify([{ username: 'admin', senha: '1234', role: 'admin' }])
+      );
+    }
+  }, []);
 
   function sair() {
-    localStorage.removeItem("liontechcar_logado");
-    localStorage.removeItem("liontechcar_role");
+    localStorage.removeItem('liontechcar_logado');
+    localStorage.removeItem('liontechcar_role');
     setLogado(false);
     setRole(null);
   }
@@ -29,9 +27,11 @@ export default function App() {
   return logado ? (
     <Carregamento onLogout={sair} role={role} />
   ) : (
-    <Login onLogin={(r) => {
-      setRole(r);
-      setLogado(true);
-    }} />
+    <Login
+      onLogin={(r) => {
+        setRole(r);
+        setLogado(true);
+      }}
+    />
   );
 }

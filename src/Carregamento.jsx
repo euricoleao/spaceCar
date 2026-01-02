@@ -1,57 +1,47 @@
-import {  useState } from 'react';
-import { useRef } from "react";
-
-
-
-
+import { useMemo, useState } from 'react';
+import { useRef } from 'react';
 
 // Chaves de armazenamento local
 const STORAGE_KEY = 'liontechcar_pedidos';
-const STORAGE_ENVIADOS_KEY = "liontechcar_pedidos_enviados";
-const STORAGE_PRODUTOS_KEY = "liontechcar_produtos";
-const usuarioLogado = localStorage.getItem("liontechcar_user") || "Usuário";
+const STORAGE_ENVIADOS_KEY = 'liontechcar_pedidos_enviados';
+const STORAGE_PRODUTOS_KEY = 'liontechcar_produtos';
+const usuarioLogado = localStorage.getItem('liontechcar_user') || 'Usuário';
 
+export default function Carregamento({ onLogout, role = 'user' }) {
+  const isAdmin = role === 'admin';
 
-
-export default function Carregamento({ onLogout, role = "user" }) {
-  const isAdmin = role === "admin";
-
-
-  const [produtos, setProdutos] = useState(() =>
-    JSON.parse(localStorage.getItem("liontechcar_produtos")) || []
+  const [produtos, setProdutos] = useState(
+    () => JSON.parse(localStorage.getItem('liontechcar_produtos')) || []
   );
 
-  
-
   const [usuarios, setUsuarios] = useState(
-    JSON.parse(localStorage.getItem("liontechcar_usuarios")) || []
+    JSON.parse(localStorage.getItem('liontechcar_usuarios')) || []
   );
 
   const [novoUsuario, setNovoUsuario] = useState({
-    usuario: "",
-    senha: "",
-    role: "user"
+    usuario: '',
+    senha: '',
+    role: 'user',
   });
 
   const [aba, setAba] = useState('cadastro');
   const [rotaSelecionada, setRotaSelecionada] = useState(null);
   const listaRotasRef = useRef(null);
-  const [dataLimpeza, setDataLimpeza] = useState("");
+  const [dataLimpeza, setDataLimpeza] = useState('');
+  const [pedidoAberto, setPedidoAberto] = useState(null);
 
-
-  const [codigoProduto, setCodigoProduto] = useState("");
+  const [codigoProduto, setCodigoProduto] = useState('');
   const [itensPedido, setItensPedido] = useState([]);
   const [produtoEncontrado, setProdutoEncontrado] = useState(null);
-  const [quantidadeProduto, setQuantidadeProduto] = useState("");
+  const [quantidadeProduto, setQuantidadeProduto] = useState('');
 
   // Cadastro de produto
-  const [codigo, setCodigo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [comprimento, setComprimento] = useState("");
-  const [largura, setLargura] = useState("");
-  const [altura, setAltura] = useState("");
-
-
+  const [codigo, setCodigo] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [comprimento, setComprimento] = useState('');
+  const [largura, setLargura] = useState('');
+  const [altura, setAltura] = useState('');
+  const [editandoCodigo, setEditandoCodigo] = useState(null);
 
   const [pedidos, setPedidos] = useState(() => {
     try {
@@ -62,7 +52,11 @@ export default function Carregamento({ onLogout, role = "user" }) {
     }
   });
 
+  const volumeCalculado = useMemo(() => {
+    if (!produtoEncontrado || !quantidadeProduto) return 0;
 
+    return Number(produtoEncontrado.volume) * Number(quantidadeProduto);
+  }, [produtoEncontrado, quantidadeProduto]);
 
   const [pedidosEnviados, setPedidosEnviados] = useState(() => {
     try {
@@ -72,9 +66,6 @@ export default function Carregamento({ onLogout, role = "user" }) {
       return [];
     }
   });
-
-
-
   const [editIndex, setEditIndex] = useState(null);
 
   const [form, setForm] = useState({
@@ -87,114 +78,152 @@ export default function Carregamento({ onLogout, role = "user" }) {
 
   function criarUsuario() {
     if (!novoUsuario.usuario || !novoUsuario.senha) {
-      alert("Preencha usuário e senha");
+      alert('Preencha usuário e senha');
       return;
     }
 
-    if (usuarios.some(u => u.usuario === novoUsuario.usuario)) {
-      alert("Usuário já existe");
+    if (usuarios.some((u) => u.usuario === novoUsuario.usuario)) {
+      alert('Usuário já existe');
       return;
     }
 
     const lista = [...usuarios, novoUsuario];
     setUsuarios(lista);
 
-    localStorage.setItem(
-      "liontechcar_usuarios",
-      JSON.stringify(lista)
-    );
+    localStorage.setItem('liontechcar_usuarios', JSON.stringify(lista));
 
-    setNovoUsuario({ usuario: "", senha: "", role: "user" });
+    setNovoUsuario({ usuario: '', senha: '', role: 'user' });
   }
-
   // BUSCAR PRODUTO POR CÓDIGO
- function salvarProduto() {
-  if (!codigo || !descricao || !comprimento || !largura || !altura) {
-    alert("Preencha todos os campos");
-    return;
-  }
-
-  const volume =
-    Number(comprimento) * Number(largura) * Number(altura);
-
-  const novoProduto = {
-    codigo: codigo.trim(),
-    descricao: descricao.trim(),
-    comprimento: Number(comprimento),
-    largura: Number(largura),
-    altura: Number(altura),
-    volume
-  };
-
-  const listaAtualizada = [...produtos, novoProduto];
-
-  setProdutos(listaAtualizada);
-  localStorage.setItem(
-    "liontechcar_produtos",
-    JSON.stringify(listaAtualizada)
-  );
-
-  // limpa formulário
-  setCodigo("");
-  setDescricao("");
-  setComprimento("");
-  setLargura("");
-  setAltura("");
-}
-
-
-  function salvarPedido() {
-    if (
-      !form.destino ||
-      !form.rota ||
-      !form.numero ||
-      !form.nome ||
-      !form.volume
-    ) {
+  function salvarProduto() {
+    if (!codigo || !descricao || !comprimento || !largura || !altura) {
       alert('Preencha todos os campos');
       return;
     }
 
-   const volumeFinal =
-  itensPedido.length > 0
-    ? itensPedido.reduce(
-        (soma, item) => soma + item.volumeTotal,
-        0
-      )
-    : parseFloat(form.volume.replace(",", "."));
+    const volume = Number(comprimento) * Number(largura) * Number(altura);
 
+    const novoProduto = {
+      codigo,
+      descricao,
+      comprimento: Number(comprimento),
+      largura: Number(largura),
+      altura: Number(altura),
+      volume,
+    };
 
+    let listaAtualizada;
+
+    if (editandoCodigo) {
+      // ✏️ EDITAR
+      listaAtualizada = produtos.map((p) =>
+        p.codigo === editandoCodigo ? novoProduto : p
+      );
+    } else {
+      // ➕ NOVO
+      const existe = produtos.some((p) => p.codigo === codigo);
+      if (existe) {
+        alert('Código já cadastrado');
+        return;
+      }
+      listaAtualizada = [...produtos, novoProduto];
+    }
+
+    setProdutos(listaAtualizada);
+    localStorage.setItem(
+      'liontechcar_produtos',
+      JSON.stringify(listaAtualizada)
+    );
+
+    limparFormulario();
+  }
+
+  function editarProduto(produto) {
+    setCodigo(produto.codigo);
+    setDescricao(produto.descricao);
+    setComprimento(produto.comprimento);
+    setLargura(produto.largura);
+    setAltura(produto.altura);
+
+    setEditandoCodigo(produto.codigo);
+  }
+
+  function limparFormulario() {
+    setCodigo('');
+    setDescricao('');
+    setComprimento('');
+    setLargura('');
+    setAltura('');
+    setEditandoCodigo(null);
+  }
+
+  function salvarPedido() {
+    if (!form.destino || !form.rota || !form.numero || !form.nome) {
+      alert('Preencha todos os campos');
+      return;
+    }
+
+    if (itensPedido.length === 0) {
+      alert('Adicione ao menos um item');
+      return;
+    }
+
+    const volumeFinal = itensPedido.reduce(
+      (soma, item) => soma + Number(item.volumeTotal || 0),
+      0
+    );
 
     const novo = {
       ...form,
       volume: volumeFinal,
+      itens: itensPedido,
     };
 
     const lista = [...pedidos];
 
     if (editIndex !== null) {
+      // 🔄 ATUALIZA pedido existente
       lista[editIndex] = novo;
-      setEditIndex(null);
     } else {
+      // ➕ NOVO pedido
       lista.push(novo);
     }
 
     setPedidos(lista);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(lista));
-    setForm({ destino: '', rota: '', numero: '', nome: '', volume: '' });
+    alert('Pedido salvo com sucesso');
+
+    // limpar formulário
+    setForm({
+      destino: '',
+      rota: '',
+      numero: '',
+      nome: '',
+      volume: '',
+    });
+
+    // limpar itens do pedido
+    setItensPedido([]);
+
+    // limpar produto em edição
+    setProdutoEncontrado(null);
+    setQuantidadeProduto('');
+    setCodigoProduto('');
+
+    // sair do modo edição
+    setEditIndex(null);
   }
 
-
   function scrollCima() {
-    listaRotasRef.current?.scrollBy({ top: -80, behavior: "smooth" });
+    listaRotasRef.current?.scrollBy({ top: -80, behavior: 'smooth' });
   }
 
   function scrollBaixo() {
-    listaRotasRef.current?.scrollBy({ top: 80, behavior: "smooth" });
+    listaRotasRef.current?.scrollBy({ top: 80, behavior: 'smooth' });
   }
 
   function editarPedidoPorNumero(numero) {
-    const p = pedidos.find(p => p.numero === numero);
+    const p = pedidos.find((p) => p.numero === numero);
     if (!p) return;
 
     setForm({
@@ -202,20 +231,20 @@ export default function Carregamento({ onLogout, role = "user" }) {
       rota: p.rota,
       numero: p.numero,
       nome: p.nome,
-      volume: p.volume.toString().replace(".", ","),
+      volume: p.volume.toString().replace('.', ','),
     });
 
-    const indexReal = pedidos.findIndex(p => p.numero === numero);
+    const indexReal = pedidos.findIndex((p) => p.numero === numero);
     setEditIndex(indexReal);
-    setAba("cadastro");
+    setAba('cadastro');
   }
 
   function enviarPedido(numeroPedido) {
-    const pedido = pedidos.find(p => p.numero === numeroPedido);
+    const pedido = pedidos.find((p) => p.numero === numeroPedido);
     if (!pedido) return;
 
     // remove da lista ativa
-    const novaLista = pedidos.filter(p => p.numero !== numeroPedido);
+    const novaLista = pedidos.filter((p) => p.numero !== numeroPedido);
     setPedidos(novaLista);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(novaLista));
 
@@ -223,16 +252,13 @@ export default function Carregamento({ onLogout, role = "user" }) {
     const pedidoEnviado = {
       numero: pedido.numero,
       nome: pedido.nome,
-      destino: pedido.destino || "—",
-      rota: pedido.rota || "",
+      destino: pedido.destino || '—',
+      rota: pedido.rota || '',
       volume: Number(pedido.volume) || 0,
       enviadoEm: new Date().toISOString(),
     };
 
-    const enviadosAtualizados = [
-      pedidoEnviado,
-      ...pedidosEnviados,
-    ];
+    const enviadosAtualizados = [pedidoEnviado, ...pedidosEnviados];
 
     setPedidosEnviados(enviadosAtualizados);
     localStorage.setItem(
@@ -242,7 +268,7 @@ export default function Carregamento({ onLogout, role = "user" }) {
   }
 
   function buscarProdutoPorCodigo(codigo) {
-    const produto = produtos.find(p => p.codigo === codigo);
+    const produto = produtos.find((p) => p.codigo === codigo);
 
     if (!produto) {
       setProdutoEncontrado(null);
@@ -250,13 +276,11 @@ export default function Carregamento({ onLogout, role = "user" }) {
     }
 
     setProdutoEncontrado(produto);
-
-
   }
 
   function adicionarItemPedido() {
     if (!produtoEncontrado || !quantidadeProduto) {
-      alert("Produto ou quantidade inválidos");
+      alert('Produto ou quantidade inválidos');
       return;
     }
 
@@ -272,43 +296,43 @@ export default function Carregamento({ onLogout, role = "user" }) {
       descricao: produtoEncontrado.descricao,
       quantidade,
       volumeUnitario,
-      volumeTotal: volumeUnitario * quantidade
+      volumeTotal: volumeUnitario * quantidade,
     };
 
     setItensPedido([...itensPedido, item]);
 
-    setCodigoProduto("");
-    setQuantidadeProduto("");
+    setCodigoProduto('');
+    setQuantidadeProduto('');
     setProdutoEncontrado(null);
   }
 
+  function removerProduto(codigo) {
+    if (!confirm('Deseja remover este produto?')) return;
+
+    const lista = produtos.filter((p) => p.codigo !== codigo);
+
+    setProdutos(lista);
+    localStorage.setItem('liontechcar_produtos', JSON.stringify(lista));
+  }
 
   function excluirDefinitivo(numeroPedido) {
-    if (!confirm("Excluir este pedido permanentemente?")) return;
+    if (!confirm('Excluir este pedido permanentemente?')) return;
 
-    const novaLista = pedidosEnviados.filter(
-      p => p.numero !== numeroPedido
-    );
+    const novaLista = pedidosEnviados.filter((p) => p.numero !== numeroPedido);
 
     setPedidosEnviados(novaLista);
-    localStorage.setItem(
-      STORAGE_ENVIADOS_KEY,
-      JSON.stringify(novaLista)
-    );
+    localStorage.setItem(STORAGE_ENVIADOS_KEY, JSON.stringify(novaLista));
   }
 
   function limparRelatoriosPorData(dataLimite) {
     if (!dataLimite) {
-      alert("Selecione uma data");
+      alert('Selecione uma data');
       return;
     }
 
-
-
-
     const limite = new Date(dataLimite);
 
-    const filtrados = pedidosEnviados.filter(p => {
+    const filtrados = pedidosEnviados.filter((p) => {
       if (!p.enviadoEm) return false;
       return new Date(p.enviadoEm) >= limite;
     });
@@ -316,19 +340,15 @@ export default function Carregamento({ onLogout, role = "user" }) {
     const removidos = pedidosEnviados.length - filtrados.length;
 
     if (removidos === 0) {
-      alert("Nenhum relatório para remover nessa data");
+      alert('Nenhum relatório para remover nessa data');
       return;
     }
 
     if (!confirm(`Deseja remover ${removidos} pedido(s) antigos?`)) return;
 
     setPedidosEnviados(filtrados);
-    localStorage.setItem(
-      STORAGE_ENVIADOS_KEY,
-      JSON.stringify(filtrados)
-    );
+    localStorage.setItem(STORAGE_ENVIADOS_KEY, JSON.stringify(filtrados));
   }
-
 
   function resumoPorDestino() {
     const mapa = {};
@@ -365,24 +385,21 @@ export default function Carregamento({ onLogout, role = "user" }) {
     texto += `Volume total: ${total.toFixed(2).replace('.', ',')}`;
 
     window.open(`https://wa.me/?text=${encodeURIComponent(texto)}`, '_blank');
-
-
-
   }
 
   function limparTodosRelatorios() {
     if (!Array.isArray(pedidosEnviados) || pedidosEnviados.length === 0) {
-      alert("Não há relatórios para apagar");
+      alert('Não há relatórios para apagar');
       return;
     }
 
     const confirmar = window.confirm(
-      "⚠️ Tem certeza que deseja apagar TODOS os relatórios enviados?"
+      '⚠️ Tem certeza que deseja apagar TODOS os relatórios enviados?'
     );
     if (!confirmar) return;
 
     const confirmar2 = window.confirm(
-      "❗ Esta ação NÃO poderá ser desfeita. Confirmar novamente?"
+      '❗ Esta ação NÃO poderá ser desfeita. Confirmar novamente?'
     );
     if (!confirmar2) return;
 
@@ -390,30 +407,43 @@ export default function Carregamento({ onLogout, role = "user" }) {
     localStorage.removeItem(STORAGE_ENVIADOS_KEY);
   }
 
-  function removerItemPedido(index) {
-  const novaLista = itensPedido.filter((_, i) => i !== index);
-  setItensPedido(novaLista);
-}
+  function removerItem(index) {
+    setItensPedido((prev) => prev.filter((_, i) => i !== index));
+  }
 
-function editarQuantidadeItem(index, novaQuantidade) {
-  const lista = [...itensPedido];
+  function buscarPedidoPorNumero() {
+    const pedido = pedidos.find((p) => p.numero === form.numero);
 
-  const item = lista[index];
+    if (!pedido) {
+      alert('Pedido não encontrado');
+      return;
+    }
 
-  const volumeTotal =
-    item.volumeUnitario * Number(novaQuantidade);
+    // carregar dados do pedido
+    setForm({
+      destino: pedido.destino,
+      rota: pedido.rota,
+      numero: pedido.numero,
+      nome: pedido.nome,
+      volume: pedido.volume,
+    });
 
-  lista[index] = {
-    ...item,
-    quantidade: Number(novaQuantidade),
-    volumeTotal
-  };
+    // carregar itens
+    setItensPedido(pedido.itens || []);
+  }
 
-  setItensPedido(lista);
-}
+  function editarItem(index) {
+    const item = itensPedido[index];
 
+    setProdutoEncontrado({
+      codigo: item.codigo,
+      descricao: item.descricao,
+      volume: item.volumeUnitario,
+    });
 
-
+    setQuantidadeProduto(item.quantidade);
+    setCodigoProduto(item.codigo);
+  }
 
   return (
     <div className="min-h-screen w-full max-w-full bg-neutral-950 p-3 overflow-y-auto">
@@ -427,7 +457,6 @@ function editarQuantidadeItem(index, novaQuantidade) {
         </button>
         <p className="text-white text-xs">
           Logado como: <span className="font-semibold">{usuarioLogado}</span>
-
         </p>
 
         <h1 className="text-3xl font-bold">LionTechCar</h1>
@@ -439,57 +468,65 @@ function editarQuantidadeItem(index, novaQuantidade) {
 
       <div className="h-20 mt-3"></div>
 
-
-
       <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
-
         {/* Botão de Cadastro */}
         <button
-          onClick={() => setAba("cadastro")}
-          className={`flex-1 p-3 ${aba === "cadastro" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-            }`}
+          onClick={() => setAba('cadastro')}
+          className={`flex-1 p-3 ${
+            aba === 'cadastro'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Cadastro
         </button>
 
-
-
         {/* Botão de Resumo */}
         <button
-          onClick={() => setAba("resumo")}
-          className={`flex-1 p-3 ${aba === "resumo" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-            }`}
+          onClick={() => setAba('resumo')}
+          className={`flex-1 p-3 ${
+            aba === 'resumo'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Ativos
         </button>
 
         {/* Botão de Enviados */}
         <button
-          onClick={() => setAba("enviados")}
-          className={`flex-1 p-3 ${aba === "enviados" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-            }`}
+          onClick={() => setAba('enviados')}
+          className={`flex-1 p-3 ${
+            aba === 'enviados'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Enviados
         </button>
 
         {/* Botão de Relatório */}
         <button
-          onClick={() => setAba("relatorios")}
-          className={`flex-1 p-3 ${aba === "relatorios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""}`}
+          onClick={() => setAba('relatorios')}
+          className={`flex-1 p-3 ${
+            aba === 'relatorios'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Relatórios
         </button>
-
       </div>
       {/* segunda parte dos botoes */}
       <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
-
         {/* Botão de Produtos */}
-
         <button
-          onClick={() => setAba("produtos")}
-          className={`px-3 py-1 rounded ${aba === "produtos" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-            }`}
+          onClick={() => setAba('produtos')}
+          className={`px-3 py-1 rounded ${
+            aba === 'produtos'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Produtos
         </button>
@@ -497,37 +534,58 @@ function editarQuantidadeItem(index, novaQuantidade) {
         {/* Botão de Resumo */}
         {isAdmin && (
           <button
-            onClick={() => setAba("usuarios")}
-            className={`flex-1 p-3 ${aba === "usuarios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-              }`}
+            onClick={() => setAba('usuarios')}
+            className={`flex-1 p-3 ${
+              aba === 'usuarios'
+                ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+                : ''
+            }`}
           >
             Usuários
           </button>
         )}
 
-
         {/* Botão de Enviados */}
         <button
-          onClick={() => setAba("enviados")}
-          className={`flex-1 p-3 ${aba === "enviados" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""
-            }`}
+          onClick={() => setAba('enviados')}
+          className={`flex-1 p-3 ${
+            aba === 'enviados'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Enviados
         </button>
 
         {/* Botão de Relatório */}
         <button
-          onClick={() => setAba("relatorios")}
-          className={`flex-1 p-3 ${aba === "relatorios" ? "bg-neutral-900 text-yellow-500 rounded-2xl border-2" : ""}`}
+          onClick={() => setAba('relatorios')}
+          className={`flex-1 p-3 ${
+            aba === 'relatorios'
+              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
+              : ''
+          }`}
         >
           Relatórios
         </button>
-
       </div>
-
 
       {aba === 'cadastro' && (
         <div className="bg-neutral-900 rounded-xl p-4 shadow space-y-3 text-gray-400">
+          <input
+            placeholder="Número do pedido"
+            value={form.numero}
+            onChange={(e) => setForm({ ...form, numero: e.target.value })}
+            className="w-[165px] mr-3 p-3 border rounded "
+          />
+
+          <button
+            onClick={buscarPedidoPorNumero}
+            className="text-green-600 border-2 border-green-600 px-3 py-2 rounded-2xl font-bold hover:bg-green-600 hover:text-white transition-colors"
+          >
+            Buscar pedido
+          </button>
+
           <input
             placeholder="Destino"
             value={form.destino}
@@ -540,12 +598,14 @@ function editarQuantidadeItem(index, novaQuantidade) {
             onChange={(e) => setForm({ ...form, rota: e.target.value })}
             className="w-full p-3 border rounded"
           />
+
           <input
             placeholder="Nº do Pedido"
             value={form.numero}
             onChange={(e) => setForm({ ...form, numero: e.target.value })}
             className="w-full p-3 border rounded"
           />
+
           <input
             placeholder="Nome do Pedido"
             value={form.nome}
@@ -554,51 +614,57 @@ function editarQuantidadeItem(index, novaQuantidade) {
           />
 
           {/* Produto por código */}
-          <div className="bg-neutral-800 p-3 rounded space-y-2">
-            <h3 className="text-yellow-500 text-sm font-bold">
-              Produto
-            </h3>
 
-            <input
-              placeholder="Código do Produto"
-              value={codigoProduto}
-              onChange={e => {
-                setCodigoProduto(e.target.value);
-                buscarProdutoPorCodigo(e.target.value);
-              }}
-              className="w-full p-2 rounded border bg-neutral-900 text-white"
-            />
+          <h3 className="text-yellow-500 text-sm font-bold">Produto</h3>
 
-            <input
-              placeholder="Quantidade"
-              type="number"
-              value={quantidadeProduto}
-              onChange={e => setQuantidadeProduto(e.target.value)}
-              className="w-full p-2 rounded  border bg-neutral-900 text-white"
-            />
-
-            {produtoEncontrado && (
-              <p className="text-green-400 text-sm">
-                Volume unitário:{" "}
-                {(produtoEncontrado.comprimento *
-                  produtoEncontrado.largura *
-                  produtoEncontrado.altura
-                ).toFixed(3)} m³
-              </p>
-            )}
-
-             <input
-            placeholder="Volume (0,35)"
-            value={form.volume}
-            onChange={(e) => setForm({ ...form, volume: e.target.value })}
-            className="w-full p-2 rounded  border bg-neutral-900 text-white "
+          <input
+            placeholder="Código do Produto"
+            value={codigoProduto}
+            onChange={(e) => {
+              setCodigoProduto(e.target.value);
+              buscarProdutoPorCodigo(e.target.value);
+            }}
+            className="w-full p-2 rounded border bg-neutral-900"
           />
 
+          <input
+            placeholder="Nome do Produto"
+            value={produtoEncontrado ? produtoEncontrado.descricao : ''}
+            onChange={(e) => {
+              setCodigoProduto(e.target.value);
+              buscarProdutoPorCodigo(e.target.value);
+            }}
+            className="w-full p-2 rounded border bg-neutral-900"
+          />
 
-          </div>
+          <input
+            type="number"
+            min="1"
+            placeholder="Quantidade"
+            value={quantidadeProduto}
+            onChange={(e) => setQuantidadeProduto(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 "
+          />
 
+          {produtoEncontrado && (
+            <p className="text-green-400 text-sm">
+              Volume unitário:{' '}
+              {(
+                produtoEncontrado.comprimento *
+                produtoEncontrado.largura *
+                produtoEncontrado.altura
+              ).toFixed(3)}{' '}
+              m³
+            </p>
+          )}
 
-         
+          <input
+            placeholder="Volume (m³)"
+            value={volumeCalculado.toFixed(3)}
+            disabled
+            className="w-full p-2 rounded border bg-neutral-900 text-white"
+          />
+
           <button
             onClick={salvarPedido}
             className="w-full bg-neutral-800 text-yellow-500 p-3 rounded font-bold"
@@ -615,94 +681,141 @@ function editarQuantidadeItem(index, novaQuantidade) {
 
           {/* ===== AQUI COMEÇA A LISTA DE ITENS DO PEDIDO ===== */}
           {itensPedido.length > 0 && (
-  <div className="mt-3 space-y-1">
-    <p className="text-yellow-500 font-semibold text-sm">
-      Itens do pedido
-    </p>
+            <div className="mt-3 space-y-1">
+              <p className="text-yellow-500 font-semibold text-sm">
+                Itens do pedido
+              </p>
+              {itensPedido.map((item, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-6 text-xs bg-neutral-800 text-white rounded px-2 py-1 gap-1"
+                >
+                  <span className="truncate col-span-2">{item.descricao}</span>
+                  <span className="text-center">{item.quantidade}</span>
+                  <span className="text-right">
+                    {Number(item.volumeUnitario || 0)
+                      .toFixed(2)
+                      .replace('.', ',')}
+                  </span>
+                  <span className="text-right">
+                    {Number(item.volumeTotal || 0)
+                      .toFixed(2)
+                      .replace('.', ',')}
+                  </span>
 
-    {itensPedido.map((item, i) => (
-      <div
-        key={i}
-        className="grid grid-cols-5 items-center text-xs bg-neutral-800 text-white rounded px-2 py-1 gap-1"
-      >
-        <span className="truncate col-span-2">
-          {item.descricao}
-        </span>
+                  {/* EDITAR */}
+                  <button
+                    onClick={() => editarItem(i)}
+                    className="text-yellow-400"
+                  >
+                    ✏️
+                  </button>
 
-        {/* quantidade editável */}
-        <input
-          type="number"
-          min="1"
-          value={item.quantidade}
-          onChange={(e) =>
-            editarQuantidadeItem(i, e.target.value)
-          }
-          className="w-14 text-center bg-neutral-900 rounded"
-        />
-
-        <span className="text-right">
-          {item.volumeTotal.toFixed(3)}
-        </span>
-
-        {/* remover */}
-        <button
-          onClick={() => removerItemPedido(i)}
-          className="text-red-500 text-center"
-        >
-          🗑️
-        </button>
-      </div>
-    ))}
-  </div>
-)}
-
-
+                  {/* REMOVER */}
+                  <button
+                    onClick={() => removerItem(i)}
+                    className="text-red-400"
+                  >
+                    ❌
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
-      {aba === "produtos" && (
+      {aba === 'produtos' && (
         <div className="bg-neutral-900 p-4 rounded-xl gap-1 space-y-3 shadow">
           <h2 className="text-yellow-500 font-bold mb-2">
             Cadastro de Produtos
           </h2>
 
-          <input placeholder="Código" value={codigo}
-            onChange={e => setCodigo(e.target.value)}
-            className="w-full p-2 rounded border bg-neutral-900 text-white " />
+          <input
+            placeholder="Código"
+            value={codigo}
+            onChange={(e) => setCodigo(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white "
+          />
 
-          <input placeholder="Descrição" value={descricao}
-            onChange={e => setDescricao(e.target.value)}
-            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+          <input
+            placeholder="Descrição"
+            value={descricao}
+            onChange={(e) => setDescricao(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white"
+          />
 
-          <input placeholder="Comprimento (m)" value={comprimento}
-            onChange={e => setComprimento(e.target.value)}
-            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+          <input
+            placeholder="Comprimento (m)"
+            value={comprimento}
+            onChange={(e) => setComprimento(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white"
+          />
 
-          <input placeholder="Largura (m)" value={largura}
-            onChange={e => setLargura(e.target.value)}
-            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+          <input
+            placeholder="Largura (m)"
+            value={largura}
+            onChange={(e) => setLargura(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white"
+          />
 
-          <input placeholder="Altura (m)" value={altura}
-            onChange={e => setAltura(e.target.value)}
-            className="w-full p-2 rounded border bg-neutral-900 text-white" />
+          <input
+            placeholder="Altura (m)"
+            value={altura}
+            onChange={(e) => setAltura(e.target.value)}
+            className="w-full p-2 rounded border bg-neutral-900 text-white"
+          />
 
-          <button onClick={salvarProduto}
-            className="w-full bg-yellow-500 text-black font-bold p-2 rounded">
+          <button
+            onClick={salvarProduto}
+            className="w-full bg-yellow-500 text-black font-bold p-2 rounded"
+          >
             Salvar produto
           </button>
+
+          {produtos.length > 0 && (
+            <div className="mt-4 space-y-2">
+              <p className="text-yellow-500 font-semibold text-sm">
+                Produtos cadastrados
+              </p>
+
+              {produtos.map((p, i) => (
+                <div
+                  key={i}
+                  className="grid grid-cols-6 text-xs bg-neutral-800 text-white rounded px-2 py-1 gap-1"
+                >
+                  <span>{p.codigo}</span>
+                  <span className="col-span-2 truncate">{p.descricao}</span>
+                  <span>{p.volume.toFixed(3)}</span>
+
+                  <button
+                    onClick={() => editarProduto(p)}
+                    className="text-yellow-400"
+                  >
+                    ✏️
+                  </button>
+
+                  <button
+                    onClick={() => removerProduto(p.codigo)}
+                    className="text-red-400"
+                  >
+                    ❌
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-
-
 
       {aba === 'resumo' && (
         <div className="space-y-3 bg-neutral-950">
           <div className="bg-neutral-900 p-4 rounded-xl shadow">
             <h2 className="font-bold mb-2 text-yellow-500">Resumo Geral</h2>
-            <p className='text-white'>
-              <strong >Pedidos totais:</strong> {pedidos.length}
+            <p className="text-white">
+              <strong>Pedidos totais:</strong> {pedidos.length}
             </p>
-            <p className='text-white'>
+            <p className="text-white">
               <strong>Volume total:</strong>{' '}
               {pedidos
                 .reduce((s, p) => s + p.volume, 0)
@@ -742,15 +855,13 @@ function editarQuantidadeItem(index, novaQuantidade) {
                     <span className="text-white truncate">{destino}</span>
                     <span className="text-center text-white">{qtdCidade}</span>
                     <span className="text-right text-white">
-                      {totalCidade.toFixed(2).replace(".", ",")}
+                      {totalCidade.toFixed(2).replace('.', ',')}
                     </span>
                   </div>
                 );
               })}
             </div>
           </div>
-
-
 
           <div className="bg-neutral-900 p-4 rounded-xl shadow">
             {/* Título + setinhas */}
@@ -788,7 +899,7 @@ function editarQuantidadeItem(index, novaQuantidade) {
               {Object.entries(resumoPorDestino()).map(([destino, rotas]) => (
                 <div key={destino}>
                   {/* Nome da cidade */}
-                  <div className="text-yellow-400 text-xs font-semibold mt-2">
+                  <div className="text-yellow-400 text-xs font-semibold mt-2 ">
                     {destino}
                   </div>
 
@@ -796,13 +907,16 @@ function editarQuantidadeItem(index, novaQuantidade) {
                     <button
                       key={rota}
                       onClick={() => setRotaSelecionada({ destino, rota })}
-                      className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm"
-                      style={{ gridTemplateColumns: "140px 60px 130px" }}
+                      className="grid  items-center bg-neutral-800 hover:bg-neutral-700 rounded px-2 py-1 text-sm  mb-2"
+                      style={{ gridTemplateColumns: '140px 60px 130px' }}
                     >
-                      <span className="truncate text-left text-blue-400">{rota}</span>
-                      <span className="text-center text-white ">{d.qtd}</span> {/* pedidos */}
+                      <span className="truncate text-left text-blue-400">
+                        {rota}
+                      </span>
+                      <span className="text-center text-white ">{d.qtd}</span>{' '}
+                      {/* pedidos */}
                       <span className="text-right text-white ">
-                        {d.vol.toFixed(2).replace(".", ",")}
+                        {d.vol.toFixed(2).replace('.', ',')}
                       </span>
                     </button>
                   ))}
@@ -811,48 +925,109 @@ function editarQuantidadeItem(index, novaQuantidade) {
             </div>
           </div>
 
-
-
-
           {rotaSelecionada && (
             <div className="bg-neutral-800 p-4 rounded-xl shadow ">
               <h2 className="font-bold mb-2 text-yellow-500">
                 Pedidos de {rotaSelecionada.destino} / {rotaSelecionada.rota}
               </h2>
-              <div className="max-h-30 overflow-y-auto no-scrollbar space-y-2 mb-4">
+              <div className="max-h-30 overflow-y-auto no-scrollbar space-y-2 mb-4 flex flex-col">
                 {pedidos
                   .filter(
                     (p) =>
                       p.destino.trim().toUpperCase() ===
-                      rotaSelecionada.destino &&
+                        rotaSelecionada.destino &&
                       p.rota.trim().toUpperCase() === rotaSelecionada.rota
                   )
                   .map((p, i) => (
                     <div
                       key={i}
-                      className="flex items-center justify-between text-sm border-b py-1"
+                      className="flex flex-col items-center  text-sm border-b py-1"
                     >
-                      <span className='text-white'>
-                        {p.numero} - <span className='text-blue-700'>{p.nome}{' '}</span>
-                        <span className="text-xs text-gray-500 ml-2">
-                          vol: {p.volume.toFixed(2).replace('.', ',')}
-                        </span>
+                      <span className="text-white">
+                        <button
+                          onClick={() =>
+                            setPedidoAberto(pedidoAberto === i ? null : i)
+                          }
+                          className="w-full text-left bg-neutral-800 hover:bg-neutral-700 rounded px-3 py-2"
+                        >
+                          <div className="flex flex-row justify-between items-center">
+                            <span className="text-white font-semibold">
+                              {p.numero} -{' '}
+                              <span className="text-blue-400">{p.nome}</span>
+                            </span>
+
+                            <span className="text-xs text-gray-400">
+                              vol:{' '}
+                              {Number(p.volume || 0)
+                                .toFixed(3)
+                                .replace('.', ',')}
+                            </span>
+                          </div>
+                        </button>
                       </span>
+                      <div>
+                        {pedidoAberto === i &&
+                          p.itens &&
+                          p.itens.length > 0 && (
+                            <div className="ml-4 mt-2 bg-neutral-900 rounded-lg p-2">
+                              {/* Cabeçalho */}
+                              <div className="grid grid-cols-4 text-[11px] text-gray-400 border-b border-neutral-700 pb-1 mb-1">
+                                <span>Produto</span>
+                                <span className="text-center">Qtde</span>
+                                <span className="text-right">Vol. Unit</span>
+                                <span className="text-right">Vol. Total</span>
+                              </div>
+
+                              {/* Lista de itens */}
+                              <div className="max-h-40 overflow-y-auto space-y-1 ">
+                                {p.itens.map((item, idx) => (
+                                  <div
+                                    key={idx}
+                                    className="grid grid-cols-4 items-center text-xs bg-neutral-800 text-white rounded px-2 py-1"
+                                  >
+                                    <span className="truncate">
+                                      {item.descricao}
+                                    </span>
+
+                                    <span className="text-center">
+                                      {item.quantidade}
+                                    </span>
+
+                                    <span className="text-right">
+                                      {Number(item.volumeUnitario || 0)
+                                        .toFixed(3)
+                                        .replace('.', ',')}
+                                    </span>
+
+                                    <span className="text-right font-semibold text-yellow-500">
+                                      {Number(item.volumeTotal || 0)
+                                        .toFixed(3)
+                                        .replace('.', ',')}
+                                    </span>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                      </div>
                       <div className="flex gap-3">
                         <button
-                          onClick={() => editarPedidoPorNumero(p.numero)}
-                          className="flex items-center justify-center text-red-600 text-lg w-8 h-8 ml-2"
-                          title="Editar"
+                          onClick={(e) => {
+                            e.stopPropagation(); // 👈 IMPEDIR abrir/fechar o pedido
+                            editarPedidoPorNumero(p.numero);
+                          }}
+                          className="flex items-center justify-center text-yellow-500 text-lg w-8 h-8 ml-2 hover:bg-neutral-700 rounded"
+                          title="Editar pedido"
                         >
                           ✏️
                         </button>
+
                         <button
                           onClick={() => enviarPedido(p.numero)}
                           className="text-green-500"
                         >
                           ✔
                         </button>
-
                       </div>
                     </div>
                   ))}
@@ -864,16 +1039,14 @@ function editarQuantidadeItem(index, novaQuantidade) {
             onClick={enviarWhatsApp}
             className="w-full bg-neutral-800 text-white p-3 rounded-xl font-bold"
           >
-            Enviar Resumo no <span className='text-green-400'>WhatsApp</span>
+            Enviar Resumo no <span className="text-green-400">WhatsApp</span>
           </button>
         </div>
       )}
 
-      {aba === "enviados" && (
+      {aba === 'enviados' && (
         <div className="bg-neutral-900 p-4 rounded-xl shadow space-y-2">
-          <h2 className="font-bold text-yellow-500 mb-3">
-            Pedidos Enviados
-          </h2>
+          <h2 className="font-bold text-yellow-500 mb-3">Pedidos Enviados</h2>
 
           {pedidosEnviados.length === 0 && (
             <p className="text-gray-400 text-sm">
@@ -902,18 +1075,18 @@ function editarQuantidadeItem(index, novaQuantidade) {
                 {p.numero} - {p.nome}
               </span>
 
-              <span className="truncate text-center">
-                {p.destino}
-              </span>
+              <span className="truncate text-center">{p.destino}</span>
 
               <span className="text-center">
-                {Number(p.volume || 0).toFixed(2).replace(".", ",")}
+                {Number(p.volume || 0)
+                  .toFixed(2)
+                  .replace('.', ',')}
               </span>
 
               <span className="text-center text-xs text-gray-300">
                 {p.enviadoEm
-                  ? new Date(p.enviadoEm).toLocaleDateString("pt-BR")
-                  : "--"}
+                  ? new Date(p.enviadoEm).toLocaleDateString('pt-BR')
+                  : '--'}
               </span>
 
               {/* Lixeira definitiva */}
@@ -929,11 +1102,8 @@ function editarQuantidadeItem(index, novaQuantidade) {
         </div>
       )}
 
-
-      {aba === "relatorios" && (
-
+      {aba === 'relatorios' && (
         <div className="bg-neutral-900 p-4 rounded-xl shadow space-y-2">
-
           <div className="flex items-center gap-2 mb-4">
             <input
               type="date"
@@ -954,10 +1124,7 @@ function editarQuantidadeItem(index, novaQuantidade) {
             >
               Limpar tudo
             </button>
-
           </div>
-
-
 
           <h2 className="font-bold text-yellow-500 mb-3">
             Relatório de Pedidos Enviados
@@ -972,9 +1139,7 @@ function editarQuantidadeItem(index, novaQuantidade) {
           </div>
 
           {pedidosEnviados.length === 0 && (
-            <p className="text-gray-400 text-sm mt-2">
-              Nenhum pedido enviado.
-            </p>
+            <p className="text-gray-400 text-sm mt-2">Nenhum pedido enviado.</p>
           )}
 
           {/* Linhas */}
@@ -989,17 +1154,19 @@ function editarQuantidadeItem(index, novaQuantidade) {
                 </span>
 
                 <span className="text-center text-white">
-                  {p.destino || "—"}
+                  {p.destino || '—'}
                 </span>
 
                 <span className="text-center text-white">
-                  {Number(p.volume || 0).toFixed(2).replace(".", ",")}
+                  {Number(p.volume || 0)
+                    .toFixed(2)
+                    .replace('.', ',')}
                 </span>
 
                 <span className="text-right text-white text-xs">
                   {p.enviadoEm
-                    ? new Date(p.enviadoEm).toLocaleDateString("pt-BR")
-                    : "—"}
+                    ? new Date(p.enviadoEm).toLocaleDateString('pt-BR')
+                    : '—'}
                 </span>
               </div>
             ))}
@@ -1007,17 +1174,14 @@ function editarQuantidadeItem(index, novaQuantidade) {
         </div>
       )}
 
-
-      {aba === "usuarios" && isAdmin && (
+      {aba === 'usuarios' && isAdmin && (
         <div className="bg-neutral-900 p-4 rounded-xl space-y-3">
-          <h2 className="text-yellow-500 font-bold">
-            Criar Usuário
-          </h2>
+          <h2 className="text-yellow-500 font-bold">Criar Usuário</h2>
 
           <input
             placeholder="Usuário"
             value={novoUsuario.usuario}
-            onChange={e =>
+            onChange={(e) =>
               setNovoUsuario({ ...novoUsuario, usuario: e.target.value })
             }
             className="w-full p-2 rounded bg-neutral-800 text-white"
@@ -1027,7 +1191,7 @@ function editarQuantidadeItem(index, novaQuantidade) {
             placeholder="Senha"
             type="password"
             value={novoUsuario.senha}
-            onChange={e =>
+            onChange={(e) =>
               setNovoUsuario({ ...novoUsuario, senha: e.target.value })
             }
             className="w-full p-2 rounded bg-neutral-800 text-white"
@@ -1035,7 +1199,7 @@ function editarQuantidadeItem(index, novaQuantidade) {
 
           <select
             value={novoUsuario.role}
-            onChange={e =>
+            onChange={(e) =>
               setNovoUsuario({ ...novoUsuario, role: e.target.value })
             }
             className="w-full p-2 rounded bg-neutral-800 text-white"
@@ -1052,9 +1216,6 @@ function editarQuantidadeItem(index, novaQuantidade) {
           </button>
         </div>
       )}
-
-
     </div>
   );
 }
-
