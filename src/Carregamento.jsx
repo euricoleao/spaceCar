@@ -29,6 +29,9 @@ export default function Carregamento({ onLogout, role = 'user' }) {
   const listaRotasRef = useRef(null);
   const [dataLimpeza, setDataLimpeza] = useState('');
   const [pedidoAberto, setPedidoAberto] = useState(null);
+  // const [voltarAberto, setVoltarAberto] = useState(null);
+
+  // Itens do pedido
 
   const [codigoProduto, setCodigoProduto] = useState('');
   const [itensPedido, setItensPedido] = useState([]);
@@ -220,6 +223,26 @@ export default function Carregamento({ onLogout, role = 'user' }) {
 
   function scrollBaixo() {
     listaRotasRef.current?.scrollBy({ top: 80, behavior: 'smooth' });
+  }
+
+  // criar função para limparar e sair do modo edição
+  function cancelarEdicao() {
+    // limpar formulário
+    setForm({
+      destino: '',
+      rota: '',
+      numero: '',
+      nome: '',
+      volume: '',
+    });
+    // limpar itens do pedido
+    setItensPedido([]);
+    // limpar produto em edição
+    setProdutoEncontrado(null);
+    setQuantidadeProduto('');
+    setCodigoProduto('');
+    // sair do modo edição
+    setEditIndex(null);
   }
 
   function editarPedidoPorNumero(numero) {
@@ -672,6 +695,16 @@ export default function Carregamento({ onLogout, role = 'user' }) {
             {editIndex !== null ? 'Salvar Alteração' : 'Adicionar Pedido'}
           </button>
 
+          {/* button limpar e sair do modo edição  */}
+          {editIndex !== null && (
+            <button
+              onClick={cancelarEdicao}
+              className="w-full bg-red-600 text-white p-2 rounded"
+            >
+              🔄 Cancelar Edição
+            </button>
+          )}
+
           <button
             onClick={adicionarItemPedido}
             className="w-full bg-blue-600 text-white p-2 rounded mt-2"
@@ -1012,12 +1045,9 @@ export default function Carregamento({ onLogout, role = 'user' }) {
                       </div>
                       <div className="flex gap-3">
                         <button
-                          onClick={(e) => {
-                            e.stopPropagation(); // 👈 IMPEDIR abrir/fechar o pedido
-                            editarPedidoPorNumero(p.numero);
-                          }}
-                          className="flex items-center justify-center text-yellow-500 text-lg w-8 h-8 ml-2 hover:bg-neutral-700 rounded"
-                          title="Editar pedido"
+                          onClick={() => editarPedidoPorNumero(p.numero)}
+                          className="flex items-center justify-center text-red-600 text-lg w-8 h-8 ml-2"
+                          title="Editar"
                         >
                           ✏️
                         </button>
