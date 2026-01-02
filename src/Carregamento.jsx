@@ -491,14 +491,14 @@ export default function Carregamento({ onLogout, role = 'user' }) {
 
       <div className="h-20 mt-3"></div>
 
-      <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
+      <div className="flex mb-4 bg-neutral-800 rounded-xl  text-white shadow overflow-hidden mt-2">
         {/* Botão de Cadastro */}
         <button
           onClick={() => setAba('cadastro')}
           className={`flex-1 p-3 ${
             aba === 'cadastro'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
+              : 'border-2 rounded-2xl'
           }`}
         >
           Cadastro
@@ -510,7 +510,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'resumo'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
+              : 'border-2 rounded-2xl'
           }`}
         >
           Ativos
@@ -522,7 +522,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'enviados'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
+              : 'border-2 rounded-2xl'
           }`}
         >
           Enviados
@@ -534,7 +534,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'relatorios'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
+              : 'border-2 rounded-2xl'
           }`}
         >
           Relatórios
@@ -548,12 +548,15 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`px-3 py-1 rounded ${
             aba === 'produtos'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
+              : 'border-2 rounded-2xl'
           }`}
         >
           Produtos
         </button>
-
+        <h1 className="ml-4 mt-2 text-yellow-500">
+          {' '}
+          Bem vindo ao LionTechCar!
+        </h1>
         {/* Botão de Resumo */}
         {isAdmin && (
           <button
@@ -561,36 +564,12 @@ export default function Carregamento({ onLogout, role = 'user' }) {
             className={`flex-1 p-3 ${
               aba === 'usuarios'
                 ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-                : ''
+                : 'border-2 rounded-2xl'
             }`}
           >
             Usuários
           </button>
         )}
-
-        {/* Botão de Enviados */}
-        <button
-          onClick={() => setAba('enviados')}
-          className={`flex-1 p-3 ${
-            aba === 'enviados'
-              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
-          }`}
-        >
-          Enviados
-        </button>
-
-        {/* Botão de Relatório */}
-        <button
-          onClick={() => setAba('relatorios')}
-          className={`flex-1 p-3 ${
-            aba === 'relatorios'
-              ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : ''
-          }`}
-        >
-          Relatórios
-        </button>
       </div>
 
       {aba === 'cadastro' && (
@@ -685,8 +664,15 @@ export default function Carregamento({ onLogout, role = 'user' }) {
             placeholder="Volume (m³)"
             value={volumeCalculado.toFixed(3)}
             disabled
-            className="w-full p-2 rounded border bg-neutral-900 text-white"
+            className="w-full p-1 rounded border bg-neutral-900 text-white"
           />
+
+          <button
+            onClick={adicionarItemPedido}
+            className="w-full bg-blue-800 text-white p-1 rounded mt-2"
+          >
+            ➕ Adicionar produto
+          </button>
 
           <button
             onClick={salvarPedido}
@@ -704,13 +690,6 @@ export default function Carregamento({ onLogout, role = 'user' }) {
               🔄 Cancelar Edição
             </button>
           )}
-
-          <button
-            onClick={adicionarItemPedido}
-            className="w-full bg-blue-600 text-white p-2 rounded mt-2"
-          >
-            ➕ Adicionar produto
-          </button>
 
           {/* ===== AQUI COMEÇA A LISTA DE ITENS DO PEDIDO ===== */}
           {itensPedido.length > 0 && (
