@@ -491,14 +491,14 @@ export default function Carregamento({ onLogout, role = 'user' }) {
 
       <div className="h-20 mt-3"></div>
 
-      <div className="flex mb-4 bg-neutral-800 rounded-xl  text-white shadow overflow-hidden mt-2">
+      <div className="flex mb-4 bg-neutral-800 rounded-xl  text-white shadow overflow-hidden mt-2 gap-1">
         {/* Botão de Cadastro */}
         <button
           onClick={() => setAba('cadastro')}
           className={`flex-1 p-3 ${
             aba === 'cadastro'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : 'border-2 rounded-2xl'
+              : 'boxshadow  border-1 rounded-2xl text-stone-500'
           }`}
         >
           Cadastro
@@ -510,7 +510,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'resumo'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : 'border-2 rounded-2xl'
+              : 'boxshadow  border-1 rounded-2xl text-stone-500'
           }`}
         >
           Ativos
@@ -522,7 +522,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'enviados'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : 'border-2 rounded-2xl'
+              : 'boxshadow  border-1 rounded-2xl text-stone-500'
           }`}
         >
           Enviados
@@ -534,37 +534,37 @@ export default function Carregamento({ onLogout, role = 'user' }) {
           className={`flex-1 p-3 ${
             aba === 'relatorios'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : 'border-2 rounded-2xl'
+              : 'boxshadow  border-1 rounded-2xl text-stone-500'
           }`}
         >
           Relatórios
         </button>
       </div>
       {/* segunda parte dos botoes */}
-      <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden">
+      <div className="flex mb-4 bg-neutral-800 rounded-xl text-white shadow overflow-hidden  justify-between">
         {/* Botão de Produtos */}
         <button
           onClick={() => setAba('produtos')}
           className={`px-3 py-1 rounded ${
             aba === 'produtos'
               ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-              : 'border-2 rounded-2xl'
+              : 'boxshadow  border-1 rounded-2xl text-stone-500 '
           }`}
         >
           Produtos
         </button>
         <h1 className="ml-4 mt-2 text-yellow-500">
           {' '}
-          Bem vindo ao LionTechCar!
+          Bem vindo !
         </h1>
         {/* Botão de Resumo */}
         {isAdmin && (
           <button
             onClick={() => setAba('usuarios')}
-            className={`flex-1 p-3 ${
+            className={`flex-1 p-3 mr-1 max-w-[90px] ${
               aba === 'usuarios'
                 ? 'bg-neutral-900 text-yellow-500 rounded-2xl border-2'
-                : 'border-2 rounded-2xl'
+                : 'boxshadow  border-1 rounded-2xl text-stone-500'
             }`}
           >
             Usuários
@@ -617,7 +617,7 @@ export default function Carregamento({ onLogout, role = 'user' }) {
 
           {/* Produto por código */}
 
-          <h3 className="text-yellow-500 text-sm font-bold">Produto</h3>
+          <h2 className="text-yellow-500 text-sm font-bold">Produto</h2>
 
           <input
             placeholder="Código do Produto"

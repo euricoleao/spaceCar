@@ -48,7 +48,15 @@ export default function Login({ onLogin }) {
 
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-neutral-900">
+    <div className="min-h-screen flex items-center justify-center bg-cover bg-center" style={{ backgroundImage:
+      "linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url('/bacgro.jpg')"}}>
+        {/* uma imagem aqui */}
+        <div className="absolute top-20 rounded-2xl left-0 w-full h-full opacity-50 bg-black">
+
+          <img src="/card-2.jpg" alt="logo" className="rounded-2xl" />
+        </div>
+     
+
       <div className="bg-black/60 p-6 rounded-xl w-full max-w-sm">
         <h1 className="text-2xl text-yellow-500 font-bold mb-4 text-center">
           LionTechCar
